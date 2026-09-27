@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>Madens klimaaftryk – hylderne</title>
+<title>Madens Klimaaftryk</title>
 <meta name="description" content="Alle fødevarer i Den Store Klimadatabase, sat på hylder efter kategori og klimaaftryk.">
 <!-- Home-screen app: "Føj til startskærm" in Safari (iPhone) or "Installer app" in Chrome (Android).
      Both need the file opened from a web address, not from the phone's file manager. -->
@@ -22,7 +22,7 @@
   (() => {
     const icon = document.getElementById("app-icon").href;
     const manifest = {
-      name: "Madens klimaaftryk", short_name: "Klimaaftryk", lang: "da",
+      name: "Madens Klimaaftryk", short_name: "Klimaaftryk", lang: "da",
       start_url: location.href.split("#")[0], display: "standalone",
       background_color: "#eef2f7", theme_color: "#eef2f7",
       icons: [
@@ -104,7 +104,6 @@
 
   header.site { padding-block: 2.25rem 1.25rem; display: grid; gap: 0.6rem; }
   h1 { font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
-  .lede { color: var(--muted); max-width: 42rem; }
 
   /* Every row shares these columns, so bars in a list line up with the dots on the shelf above:
      name | scale | compare button. */
@@ -200,10 +199,6 @@
   .shelf-btn[aria-expanded="true"] svg { rotate: 90deg; }
   .shelf-name { font-weight: 700; line-height: 1.3; }
   .shelf-meta { grid-column: 2; color: var(--muted); font-size: 0.9375rem; }
-  /* While searching, shelves without a match shrink to one quiet line. */
-  .shelf.dim .shelf-name { color: var(--muted); font-weight: 400; }
-  .shelf.dim .strip { display: none; }
-  .shelf.dim .shelf-btn { min-height: 2.5rem; padding-block: 0.25rem; }
 
   .strip { position: relative; height: 3.5rem; cursor: pointer; align-self: center; }
   .strip .grids { position: absolute; inset: 0; }
@@ -366,7 +361,6 @@
     body { font-size: 1.0625rem; }
     header.site { padding-block: 1.25rem 0.75rem; gap: 0.4rem; }
     h1 { font-size: clamp(1.75rem, 1.2rem + 3vw, 2.25rem); }
-    .lede { font-size: 1rem; line-height: 1.5; }
     .row-grid { grid-template-columns: minmax(0, 1fr) var(--pick-w); }
     .shelf .row-grid > h2 { grid-column: 1 / -1; }
 
@@ -445,8 +439,7 @@
 <body>
 <div class="wrap">
   <header class="site">
-    <h1>Madens klimaaftryk, hylde for hylde</h1>
-    <p class="lede">Stregen øverst viser alle fødevarer på én skala – jo længere til højre, jo større klimaaftryk pr. kg. Nedenunder står de samme fødevarer på hylder efter kategori. Åbn en hylde for at se fødevarerne, og tryk på plusset for at sammenligne dem.</p>
+    <h1>Madens Klimaaftryk</h1>
   </header>
 
   <div class="sticky">
@@ -732,7 +725,7 @@
       const hits = hitIds ? s.items.filter((f) => hitIds.has(f.id)) : s.items;
       if (filtering) { total += hits.length; if (hits.length) shelvesHit++; }
       el.querySelectorAll(".dot").forEach((d) => d.classList.toggle("hit", filtering && hitIds.has(d.dataset.id)));
-      el.classList.toggle("dim", filtering && !hits.length);
+      el.hidden = filtering && !hits.length;
       el.querySelector(".count").textContent = filtering ? `${hits.length} af ${s.items.length} passer` : `${s.items.length} fødevarer`;
       el.querySelector(".typ").hidden = filtering;
       const isOpen = filtering ? hits.length > 0 : open.has(s.cat);
@@ -745,6 +738,7 @@
       : total ? `${total} ${total === 1 ? "fødevare" : "fødevarer"} på ${shelvesHit} ${shelvesHit === 1 ? "hylde" : "hylder"}`
       : "Ingen fødevarer passer. Prøv et kortere ord, fx «kylling» i stedet for «kyllingelår».";
     $("#toggle-all").hidden = filtering;
+    $("#legend-mobile").hidden = filtering;
     $("#toggle-all").textContent = open.size === shelves.length ? "Luk alle hylder" : "Åbn alle hylder";
     markPicks();
     ticks.classList.toggle("filtering", filtering);
@@ -752,8 +746,19 @@
     tickOf.forEach((line, id) => line.classList.toggle("hit", filtering && hitIds.has(id)));
   }
 
+  // After a search, bring the first match up under the pinned search field if it is out of view.
+  function showResults() {
+    if (!tokens().length) return;
+    const top = $("#status").getBoundingClientRect().top;
+    const pinned = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pinned")) || 0;
+    // visualViewport excludes the on-screen keyboard, which would otherwise hide the results.
+    const visible = window.visualViewport ? visualViewport.height : innerHeight;
+    if (top < pinned || top > visible * 0.6) {
+      scrollTo({ top: scrollY + top - pinned, behavior: reduced() ? "auto" : "smooth" });
+    }
+  }
   let timer;
-  q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(render, 120); });
+  q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => { render(); showResults(); }, 120); });
   q.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { q.value = ""; render(); }
     // The results are already on screen; Enter (the phone keyboard's search key) just puts the keyboard away.

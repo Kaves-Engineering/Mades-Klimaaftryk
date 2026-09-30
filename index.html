@@ -46,8 +46,10 @@
   }
 
   /* Concept: the supermarket seen from the end of the aisle. Every category is a shelf,
-     every food a dot on one shared log scale. Levels run blue → orange (safe for red–green
-     colour blindness) and are always named in words too. */
+     every food a dot on the shelf's own linear scale. Ten levels, each twice the one before,
+     run blue → green → yellow → red and on to purple (dark mode: to a white-hot rose). Levels
+     next to each other stay apart for all common colour blindness (OKLab ΔE ≥ 5.4), every
+     colour has ≥ 3:1 contrast on page and card, and the number is always written too. */
   :root {
     --bg: #eef2f7;
     --surface: #ffffff;
@@ -59,25 +61,29 @@
     --accent-ink: #ffffff;
     --focus: #d9480f;
     --dot-ring: #ffffff;
-    --l0: #2f6fa3; --l1: #3c8aa6; --l2: #8c7d2c; --l3: #cc6622; --l4: #a8341f;
+    --l0: #2c488e; --l1: #0369a1; --l2: #01889b; --l3: #249c74; --l4: #9e8901;
+    --l5: #ab5800; --l6: #a32b00; --l7: #91001d; --l8: #6d0031; --l9: #3f0d57;
     --band-a: 0.16;
     --font: "Atkinson Next", "Segoe UI", system-ui, sans-serif;
     --label-w: 15rem;
     --pick-w: 2.75rem;
+    --val-w: 3.5rem;
     --gap: 1.25rem;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0d1726; --surface: #15223a; --ink: #e8eef8; --muted: #a9b6c9; --line: #2c3c58;
       --track: #213150; --accent: #8fb0ff; --accent-ink: #0d1726; --focus: #ffa66b; --dot-ring: #15223a;
-      --l0: #6fa8dc; --l1: #72c2d6; --l2: #d6c274; --l3: #f29a5a; --l4: #f07a63;
+      --l0: #5176cd; --l1: #4a9dd9; --l2: #59c2d6; --l3: #70ddb1; --l4: #e8d66b;
+      --l5: #f9a63e; --l6: #f5793a; --l7: #d93632; --l8: #e73e9a; --l9: #ffe8e8;
       --band-a: 0.22;
     }
   }
   :root[data-theme="dark"] {
     --bg: #0d1726; --surface: #15223a; --ink: #e8eef8; --muted: #a9b6c9; --line: #2c3c58;
     --track: #213150; --accent: #8fb0ff; --accent-ink: #0d1726; --focus: #ffa66b; --dot-ring: #15223a;
-    --l0: #6fa8dc; --l1: #72c2d6; --l2: #d6c274; --l3: #f29a5a; --l4: #f07a63;
+    --l0: #5176cd; --l1: #4a9dd9; --l2: #59c2d6; --l3: #70ddb1; --l4: #e8d66b;
+    --l5: #f9a63e; --l6: #f5793a; --l7: #d93632; --l8: #e73e9a; --l9: #ffe8e8;
     --band-a: 0.22;
   }
   :root[data-theme="light"] { color-scheme: light; }
@@ -200,7 +206,7 @@
   .shelf-name { font-weight: 700; line-height: 1.3; }
   .shelf-meta { grid-column: 2; color: var(--muted); font-size: 0.9375rem; }
 
-  .strip { position: relative; height: 3.5rem; cursor: pointer; align-self: center; }
+  .strip { position: relative; height: 3.5rem; cursor: pointer; align-self: center; margin-right: var(--val-w); }
   .strip .grids { position: absolute; inset: 0; }
   .strip .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
   .dot {
@@ -209,6 +215,8 @@
     translate: -50% -50%; transition: opacity 0.2s;
   }
   .filtering .dot { opacity: 0.14; }
+  /* A dot past the end of its shelf's scale sits at the edge, squared off on the left. */
+  .dot.off { border-radius: 2px 50% 50% 2px; }
   .filtering .dot.hit { opacity: 1; width: 14px; height: 14px; box-shadow: 0 0 0 2px var(--ink); z-index: 1; }
   .dot.picked { opacity: 1 !important; width: 16px; height: 16px; z-index: 2; box-shadow: 0 0 0 2px var(--dot-ring), 0 0 0 4px var(--ink); }
   .pick-label {
@@ -227,7 +235,17 @@
   }
   .tip strong { display: block; }
 
-  /* ---------- A shelf opened: foods ranked, bars on the same scale as the dots ---------- */
+  /* Each shelf's own scale, under its dots: level bands and a few round numbers. */
+  .shelf-scale { grid-column: 2; margin-bottom: 0.25rem; }
+  .shelf-scale .s-bands { display: flex; height: 0.3rem; border-radius: 0.2rem; overflow: hidden; margin-right: var(--val-w); }
+  .shelf-scale .s-bands span { background: var(--c); }
+  .shelf-scale .s-axis { position: relative; height: 1.3rem; margin-right: var(--val-w); font-size: 0.8125rem; color: var(--muted); }
+  .shelf-scale .s-axis span { position: absolute; top: 0.1rem; translate: -50% 0; white-space: nowrap; }
+  .shelf-scale .s-axis span:first-child { translate: 0 0; }
+  .shelf-scale .s-axis span:last-child { translate: -100% 0; }
+  .fold-note { grid-column: 2; color: var(--muted); font-size: 0.875rem; margin: -0.1rem 0 0.35rem; }
+
+  /* ---------- A shelf opened: foods ranked, bars on the shelf's scale ---------- */
   .foods { list-style: none; margin: 0 0 1rem; padding: 0; }
   .food { align-items: center; }
   .food-btn {
@@ -239,10 +257,17 @@
   @media (hover: hover) { .food-btn:hover { background: var(--surface); } }
   .food-name { padding-left: 1.9rem; line-height: 1.3; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
   .food-btn[aria-expanded="true"] .food-name { font-weight: 700; }
-  .bar-cell { position: relative; height: 1.1rem; display: flex; align-items: center; }
-  .bar { height: 100%; background: var(--c); border-radius: 0 3px 3px 0; min-width: 3px; }
-  .bar-val { padding-left: 0.5rem; font-weight: 700; white-space: nowrap; font-size: 1rem; }
-  .bar-val.inside { position: absolute; right: calc(100% - var(--p) + 0.4rem); color: var(--surface); padding: 0; }
+  /* One line holds the shelf's scale, at most 20 kg; a bigger footprint continues on the next line.
+     The last --val-w of each line is kept free for the number, so it never sits on the bar. */
+  .fold { display: grid; gap: 3px; }
+  .fold .ln { position: relative; height: 1rem; }
+  .fold .ln::before {
+    content: ""; position: absolute; inset: 0 var(--val-w) 0 0;
+    background: linear-gradient(to right, var(--line) 1px, transparent 1px) 0 0 / var(--gstep) 100%;
+  }
+  .fold .ln > i { position: absolute; left: 0; top: 0; bottom: 0; width: calc((100% - var(--val-w)) * var(--f)); min-width: 3px; background: var(--c); border-radius: 0 3px 3px 0; }
+  .fold .ln.full > i { border-radius: 0; }
+  .fold .ln > b { position: absolute; top: 50%; left: calc((100% - var(--val-w)) * var(--f)); translate: 0.4rem -50%; line-height: 1; font-size: 1rem; white-space: nowrap; }
   .na-val { color: var(--muted); font-size: 0.9375rem; }
 
   /* Compare toggle: an outlined plus that turns into a filled check. */
@@ -397,13 +422,14 @@
 
     .shelf-btn { min-height: 3rem; padding-inline: 0; }
     .shelf-meta { font-size: 0.875rem; }
-    .strip { height: 2.75rem; margin: 0 0 0.5rem; }
+    .strip { height: 2.75rem; margin: 0 var(--val-w) 0.25rem 0; }
     .food-btn { grid-column: 1; grid-template-columns: minmax(0, 1fr); row-gap: 0.2rem; padding-inline: 0; }
     /* The open row's panel reaches a little past the text, so the name doesn't touch its edge. */
     .food-btn[aria-expanded="true"] { box-shadow: -0.5rem 0 0 var(--surface); border-radius: 0 0.4rem 0 0; }
     .food-name { padding-left: 0; }
-    .bar-cell { margin-bottom: 0.2rem; }
-    .bar-val { font-size: 0.9375rem; }
+    .fold { margin-bottom: 0.2rem; }
+    .fold .ln > b { font-size: 0.9375rem; }
+    .shelf-scale, .fold-note { grid-column: 1; }
     .detail { margin-inline: -0.5rem; padding: 1rem 1rem 1.25rem; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
     .big { font-size: 2.25rem; }
     .verdict { font-size: 1rem; }
@@ -439,7 +465,7 @@
   @keyframes sheet { from { translate: 0 100%; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   @media (forced-colors: active) { .ticks line { stroke: CanvasText; } }
-  @media (forced-colors: active) { .dot, .bar, .median, .cmp-fill, .med-key { forced-color-adjust: none; } }
+  @media (forced-colors: active) { .dot, .fold i, .shelf-scale span, .median, .cmp-fill, .med-key { forced-color-adjust: none; } }
 </style>
 </head>
 <body>
@@ -486,9 +512,11 @@
       <p><strong>CO<sub>2</sub>e</strong> samler alle drivhusgasser – også metan og lattergas – i ét tal.</p>
       <ul>
         <li>Tallene dækker landbrug, ændret arealanvendelse, forarbejdning, emballage, transport og butik. Transport hjem, madlavning og madspild er ikke med.</li>
-        <li>Hylderne bruger en logaritmisk skala: der er lige langt fra 1 til 10 kg som fra 10 til 100 kg. Ellers ville næsten alle fødevarer klumpe sammen i venstre side. Sammenligningen bruger en almindelig skala, så forskellene ses i deres rigtige størrelse.</li>
+        <li>Alle skalaer er almindelige skalaer fra 0, så en dobbelt så lang søjle betyder et dobbelt så stort aftryk. Hver hylde har sin egen skala, der går lidt over hyldens højeste tal. Når du søger, deler alle resultater én skala.</li>
+        <li>En linje rummer højst 20 kg. Et større aftryk fortsætter på næste linje, så oksekød fylder mange linjer, mens de fleste fødevarer kan ses tydeligt.</li>
+        <li>Linjen med alle fødevarer øverst går fra 0 til 250 kg. Zoom ind for at se de lave tal.</li>
         <li><strong>Pr. 100 g protein</strong> er en mere retfærdig måde at sammenligne proteinkilder som kød, fisk, bønner og tofu. Det vises kun for fødevarer med mindst 3 g protein pr. 100 g.</li>
-        <li>Niveauerne fra «Meget lav» til «Meget høj» er lavet til denne side. De er ikke en del af databasen.</li>
+        <li>Farverne har ti trin, og hvert trin er dobbelt så stort som det forrige: 0,5, 1, 2, 4, 8, 16, 32, 64 og 128 kg. Niveauerne fra «Meget lav» til «Voldsom» er lavet til denne side. De er ikke en del af databasen.</li>
         <li>Tallene er gennemsnit for fødevarer solgt i Danmark og har en vis usikkerhed. Brug dem til at se forskelle, ikke som præcise målinger.</li>
       </ul>
     </div>
@@ -541,28 +569,35 @@
   const PREPARED = [["Ra00060-filter","Filterkaffe","Drikkevarer","Kaffe, filter, brygget",0.4151,0.3297,0.0365,0.0134,0.0142,0.0208,0.0004,0.0,0.0,0.0,0.0,{"serve":200,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",12],["Ra00068",200]]}],["Ra00060-espresso","Espresso, dobbelt","Drikkevarer","Kaffe, espresso",3.4518,2.7477,0.3044,0.1051,0.118,0.1734,0.0032,0.0,0.0,0.0,0.0,{"serve":36,"word":"dobbelt shot","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",18],["Ra00068",36]]}],["Ra00060-americano","Americano","Drikkevarer","Kaffe, americano",0.4979,0.3957,0.0438,0.0159,0.017,0.025,0.0005,0.0,0.0,0.0,0.0,{"serve":250,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",18],["Ra00068",250]]}],["Ra00060-cappuccino","Cappuccino, letmælk","Drikkevarer","Kaffe, cappuccino",1.0277,0.9383,-0.1457,0.0559,0.0892,0.0892,0.0008,161.0,1.3,3.8,2.7,{"serve":186,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",18],["Ra00068",36],["Ra00342",150]]}],["Ra00060-latte","Caffe latte, letmælk","Drikkevarer","Kaffe, latte",0.8686,0.8195,-0.1752,0.0527,0.0873,0.0837,0.0006,172.0,1.4,4.0,2.9,{"serve":256,"word":"glas","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",18],["Ra00068",36],["Ra00342",220]]}],["Ra00060-latte-havre","Caffe latte, havredrik","Drikkevarer","Kaffe, latte, havre",0.8333,0.4879,0.0639,0.135,0.0873,0.0533,0.0059,163.0,1.4,4.8,0.5,{"serve":256,"word":"glas","unit":"liter","tag":"beregnet drik","parts":[["Ra00060",18],["Ra00068",36],["Ra00211",220]]}],["Ra00059-instant","Pulverkaffe, opløst","Drikkevarer","Kaffe, instant",0.1738,0.0992,0.0113,0.0252,0.032,0.0061,0.0001,13.0,0.0,0.1,0.2,{"serve":200,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00059",2],["Ra00068",200]]}],["Ra00058-te","Te, brygget","Drikkevarer","Te, brygget",0.1681,0.106,0.0165,0.0156,0.0194,0.0105,0.0001,0.0,0.0,0.0,0.0,{"serve":250,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00058",2.5],["Ra00068",250]]}],["Ra00061-kakao","Kakaomælk af instantpulver, sødmælk","Drikkevarer","Kakao, varm, med mælk",1.6718,1.4838,-0.0462,-0.2508,0.3771,0.1074,0.0006,361.0,3.5,9.4,3.5,{"serve":215,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00061",15],["Ra00341",200]]}],["Ra00062-kakao","Kakaomælk af kakao og sukker, sødmælk","Drikkevarer","Kakao, varm, med mælk",1.1142,0.9664,-0.1482,-0.0244,0.2168,0.1031,0.0007,377.0,4.0,9.2,3.9,{"serve":265,"word":"kop","unit":"liter","tag":"beregnet drik","parts":[["Ra00062",8],["Ra00318",12],["Ra00341",250]]}],["Ra00117-saft","Frugtsaft, fortyndet 1+4","Drikkevarer","Saft, fortyndet",0.5056,0.2575,0.015,0.0527,0.0611,0.1179,0.0013,148.0,0.0,8.7,0.0,{"serve":250,"word":"glas","unit":"liter","tag":"beregnet drik","parts":[["Ra00117",50],["Ra00068",200]]}],["Ra00118-hyldebaer","Hyldebærsaft, fortyndet 1+4","Drikkevarer","Saft, fortyndet",0.8012,0.5675,0.0493,0.0526,0.0611,0.0694,0.0013,186.0,0.1,10.6,0.1,{"serve":250,"word":"glas","unit":"liter","tag":"beregnet drik","parts":[["Ra00118",50],["Ra00068",200]]}],["Ra00220-bouillon","Bouillon af terning","Smagsgivere og krydderier","Bouillon, oksekød, af terning",0.1998,0.1368,0.0364,0.0134,0.0082,0.0047,0.0001,14.0,0.1,0.2,0.3,{"serve":250,"word":"kop","unit":"liter","tag":"beregnet ret","parts":[["Ra00220",5],["Ra00068",250]]}],["Ra00300-kogt","Ris, parboiled, kogt","Korn og kornprodukter","Ris, kogte",1.8777,1.547,0.0597,0.0587,0.075,0.135,0.0023,564.0,0.4,29.0,3.0,{"serve":202,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.7,"parts":[["Ra00300",75],["Ra00068",127]]}],["Ra00465-kogt","Risnudler, kogte","Korn og kornprodukter","Nudler, kogte",1.967,1.591,0.0628,0.072,0.093,0.1457,0.0025,604.0,0.5,32.7,2.0,{"serve":188,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.5,"parts":[["Ra00465",75],["Ra00068",113]]}],["Ra00470-kogt","Æggenudler, kogte","Korn og kornprodukter","Nudler, kogte",0.6946,0.4613,0.0362,0.0668,0.093,0.0348,0.0025,589.0,0.8,27.1,5.7,{"serve":188,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.5,"parts":[["Ra00470",75],["Ra00068",113]]}],["Ra00234-kogt","Pasta, kogt","Korn og kornprodukter","Pasta, kogt",0.8558,0.4933,0.0393,0.0735,0.0971,0.15,0.0026,638.0,0.8,30.8,5.6,{"serve":216,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.4,"parts":[["Ra00234",90],["Ra00068",126]]}],["Ra00301-kogt","Quinoa, kogt","Korn og kornprodukter","Quinoa, kogt",1.6553,1.3338,0.155,0.0006,0.0721,0.0915,0.0023,522.0,2.3,15.1,4.9,{"serve":210,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.8,"parts":[["Ra00301",75],["Ra00068",135]]}],["Ra00298-kogt","Bulgur, kogt","Korn og kornprodukter","Bulgur, kogt",0.6694,0.4702,0.0358,0.0565,0.0721,0.0325,0.0023,516.0,0.7,16.2,4.2,{"serve":210,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.8,"parts":[["Ra00298",75],["Ra00068",135]]}],["Ra00483-kogt","Kamut, kogt","Korn og kornprodukter","Kamut, kogt",0.7476,0.5252,0.04,0.063,0.0805,0.0363,0.0025,555.0,0.8,25.3,5.5,{"serve":188,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.5,"parts":[["Ra00483",75],["Ra00068",113]]}],["Ra00131-kogt","Byggryn, kogte","Korn og kornprodukter","Byggryn, kogte",0.5941,0.4569,0.041,-0.0069,0.0673,0.0337,0.0021,492.0,0.8,20.7,3.3,{"serve":225,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":3,"parts":[["Ra00131",75],["Ra00068",150]]}],["Ra00175-kogt","Kikærter, kogte (af tørrede)","Bælgfrugter og bælgfrugtprodukter","Kikærter, kogte",1.6368,1.2581,0.1641,0.0005,0.0918,0.1194,0.0029,700.0,3.1,20.9,9.3,{"serve":132,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.2,"parts":[["Ra00175",60],["Ra00068",72]]}],["Ra00174-kogt","Linser, grønne, kogte","Bælgfrugter og bælgfrugtprodukter","Linser, kogte",1.2317,0.9697,0.1012,0.0005,0.0808,0.077,0.0025,586.0,1.0,21.3,10.5,{"serve":150,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.5,"parts":[["Ra00174",60],["Ra00068",90]]}],["Ra00448-kogt","Linser, røde, kogte","Bælgfrugter og bælgfrugtprodukter","Linser, kogte",1.2317,0.9697,0.1012,0.0005,0.0808,0.077,0.0025,608.0,2.8,19.6,8.0,{"serve":150,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.5,"parts":[["Ra00448",60],["Ra00068",90]]}],["Ra00180-kogt","Sojabønner, kogte (af tørrede)","Bælgfrugter og bælgfrugtprodukter","Sojabønner, kogte",0.8003,0.5575,0.083,0.0005,0.0878,0.0687,0.0027,748.0,8.0,7.6,15.6,{"serve":138,"word":"portion","unit":"kg","tag":"beregnet, kogt","gain":2.3,"parts":[["Ra00180",60],["Ra00068",78]]}],["Ra00132-grod","Havregrød, kogt i vand","Korn og kornprodukter","Grød, havre",0.277,0.2154,0.0196,-0.0023,0.0287,0.0146,0.0009,219.0,1.0,8.1,2.0,{"serve":260,"word":"portion","unit":"kg","tag":"beregnet ret","parts":[["Ra00132",37],["Ra00068",250]]}],["Ra00133-grod","Risengrød, sødmælk","Korn og kornprodukter","Grød, ris",1.2678,1.1256,-0.1589,0.0843,0.0984,0.1172,0.0012,468.0,2.9,17.1,3.8,{"serve":300,"word":"portion","unit":"kg","tag":"beregnet ret","parts":[["Ra00133",52],["Ra00341",231],["Ra00068",23]]}],["Ra00358-mos","Kartoffelmos af pulver, letmælk","Grøntsager og grøntsagsprodukter","Kartoffelmos",1.0378,0.5591,-0.1124,0.3624,0.1233,0.1043,0.0011,299.0,0.7,11.9,2.9,{"serve":200,"word":"portion","unit":"kg","tag":"beregnet ret","parts":[["Ra00358",33],["Ra00068",100],["Ra00342",67]]}]];
   const MIN_PROTEIN = 3;
   const MAX_COMPARE = 8;
+  // Ten colour levels, each twice the one before, so beef at 228 kg is five colours past meatballs at 16.
   const LEVELS = [
-    { max: 1, label: "Meget lav", word: "meget lavt", range: "under 1 kg" },
-    { max: 2.5, label: "Lav", word: "lavt", range: "1–2,5 kg" },
-    { max: 5, label: "Middel", word: "middel", range: "2,5–5 kg" },
-    { max: 10, label: "Høj", word: "højt", range: "5–10 kg" },
-    { max: Infinity, label: "Meget høj", word: "meget højt", range: "over 10 kg" },
+    { max: 0.5, label: "Meget lav", word: "meget lavt", range: "under 0,5 kg" },
+    { max: 1, label: "Meget lav", word: "meget lavt", range: "0,5–1 kg" },
+    { max: 2, label: "Lav", word: "lavt", range: "1–2 kg" },
+    { max: 4, label: "Middel", word: "middel", range: "2–4 kg" },
+    { max: 8, label: "Høj", word: "højt", range: "4–8 kg" },
+    { max: 16, label: "Meget høj", word: "meget højt", range: "8–16 kg" },
+    { max: 32, label: "Ekstrem", word: "ekstremt højt", range: "16–32 kg" },
+    { max: 64, label: "Ekstrem", word: "ekstremt højt", range: "32–64 kg" },
+    { max: 128, label: "Voldsom", word: "voldsomt højt", range: "64–128 kg" },
+    { max: Infinity, label: "Voldsom", word: "voldsomt højt", range: "over 128 kg" },
   ];
   const STAGES = ["Landbrug", "Ændret arealanvendelse", "Forarbejdning", "Emballage", "Transport", "Butik"];
   // Everyday foods labelled above the scale; `up` lifts the label a row so neighbours don't collide,
   // `opt` ones are left out on narrow screens.
   const LANDMARKS = [
-    { id: "Ra00257", label: "Gulerod" },
-    { id: "Ra00108", label: "Æg", up: true },
-    { id: "Ra00423", label: "Kylling", opt: true },
-    { id: "Ra00078", label: "Danbo", up: true },
-    { id: "Ra00012", label: "Hakket oksekød" },
+    { id: "Ra00423", label: "Kylling" },
+    { id: "Ra00273", label: "Lam", up: true },
+    { id: "Ra00012", label: "Hakket oksekød", opt: true },
+    { id: "Ra00503", label: "Oksekød", up: true },
+    { id: "Ra00011", label: "Oksemørbrad" },
   ];
-  // The visible part of the scale, in log10 of kg CO2e/kg. Zooming the line of all foods
-  // narrows it, and everything positioned on the scale follows.
-  const FULL = [Math.log10(0.1), Math.log10(300)];
+  // The visible part of the line of all foods, in kg CO2e/kg on a linear scale. Zooming narrows it,
+  // and the landmarks and bands above it follow. The shelves have scales of their own (scaleFor).
+  const FULL = [0, 250];
   const FULL_SPAN = FULL[1] - FULL[0];
-  const MIN_SPAN = 0.25; // decades – about 1,8× from edge to edge
+  const MIN_SPAN = 1; // kg from edge to edge
+  const LINE_MAX = 20; // kg: the most one line of a bar may hold before it folds
   let view = [...FULL];
 
   const $ = (s) => document.querySelector(s);
@@ -577,10 +612,9 @@
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
   const span = () => view[1] - view[0];
   const isZoomed = () => span() < FULL_SPAN - 1e-6;
-  const posRaw = (v) => (Math.log10(Math.max(v, 0.1)) - view[0]) / span(); // outside 0–1 when off-screen
+  const posRaw = (v) => (v - view[0]) / span(); // outside 0–1 when off-screen
   const pos = (v) => clamp(posRaw(v), 0, 1);
   const pct = (v) => (posRaw(v) * 100).toFixed(3) + "%";
-  const outCls = (v) => { const p = posRaw(v); return p < -0.002 || p > 1.002 ? " out" : ""; };
   const color = (v) => v == null ? "var(--line)" : `var(--l${levelOf(v)})`;
   const shortName = (n) => n.length > 22 ? n.split(",")[0] : n;
   const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -622,7 +656,7 @@
   // ---------- Scale header ----------
   $("#bands").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})">${l.label}</span>`).join("");
   $("#all-count").textContent = `Alle ${dbValued.length} fødevarer`;
-  $("#legend-mobile").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})"><i></i>${l.label}: ${l.range}</span>`).join("");
+  $("#legend-mobile").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})"><i></i>${l.range}</span>`).join("");
   $("#marks").innerHTML = LANDMARKS.filter((m) => byId.get(m.id)?.total != null).map((m) => {
     const f = byId.get(m.id);
     return `<div class="mark${m.up ? " up" : ""}${m.opt ? " opt" : ""}" data-v="${f.total}" style="left:${pct(f.total)}">
@@ -652,20 +686,56 @@
         <div class="strip" data-i="${i}" aria-hidden="true">
           <span class="grids"></span>
           ${s.items.filter((f) => f.total != null).map((f) =>
-            `<span class="dot" data-id="${esc(f.id)}" data-v="${f.total}" style="--c:${color(f.total)};left:${pct(f.total)};top:${dotTop(f)}%"></span>`).join("")}
-          <span class="median" data-v="${s.med}" style="left:${pct(s.med)}"></span>
+            `<span class="dot" data-id="${esc(f.id)}" data-k="${f.total}" style="--c:${color(f.total)};top:${dotTop(f)}%"></span>`).join("")}
+          <span class="median" data-k="${s.med}"></span>
         </div>
+        <div class="shelf-scale" aria-hidden="true"></div>
+        <p class="fold-note" hidden>Over 20 kg fortsætter søjlen på næste linje.</p>
       </div>
       <ul class="foods" id="list-${i}" hidden aria-label="${esc(s.cat)}, fra lavest til højest"></ul>
     </section>`).join("");
 
+  // ---------- Each list's own linear scale ----------
+  // A line runs from 0 to the smallest round number (1, 2, 2,5 or 5 times a power of ten) just above
+  // the list's largest value, in two to five steps, but never past LINE_MAX. Bigger values fold.
+  const scaleOf = new Map(); // shelf → the scale its list and dots use right now
+  function scaleFor(values) {
+    const max = Math.min(Math.max(0.1, ...values), LINE_MAX);
+    let best = null;
+    for (let e = -2; e <= 2; e++) for (const m of [1, 2, 2.5, 5]) {
+      const step = m * 10 ** e, n = Math.ceil(max / step - 1e-9);
+      if (n >= 2 && n <= 5 && (!best || n * step < best.top)) best = { step, top: n * step };
+    }
+    return best;
+  }
+  // A bar that folds after sc.top: full lines, then the rest with the number beside it.
+  function foldHTML(v, sc) {
+    const n = Math.max(1, Math.ceil(v / sc.top - 1e-9)), rest = v / sc.top - (n - 1);
+    return `<span class="fold" style="--gstep:${(sc.step / sc.top * 100).toFixed(3)}%">${'<span class="ln full" style="--f:1"><i></i></span>'.repeat(n - 1)
+      }<span class="ln" style="--f:${rest.toFixed(4)}"><i></i><b class="num">${fmt(v)}</b></span></span>`;
+  }
+  // Puts a shelf's dots, median and guide lines on its scale, and draws the scale underneath.
+  function placeShelf(el, sc, values) {
+    const frac = (v) => Math.min(1, v / sc.top);
+    el.querySelectorAll(".strip [data-k]").forEach((d) => {
+      const v = +d.dataset.k;
+      d.style.left = (frac(v) * 100).toFixed(2) + "%";
+      d.classList.toggle("off", v > sc.top);
+    });
+    const ticks = Array.from({ length: Math.round(sc.top / sc.step) + 1 }, (_, i) => i * sc.step);
+    el.querySelector(".strip .grids").innerHTML = ticks.map((t) => `<span class="grid" style="left:${(frac(t) * 100).toFixed(2)}%"></span>`).join("");
+    const edges = [0, ...LEVELS.map((l) => Math.min(l.max, sc.top))];
+    el.querySelector(".shelf-scale").innerHTML =
+      `<div class="s-bands">${LEVELS.map((l, i) => edges[i + 1] > edges[i] ? `<span style="--c:var(--l${i});width:${((edges[i + 1] - edges[i]) / sc.top * 100).toFixed(2)}%"></span>` : "").join("")}</div>
+      <div class="s-axis num">${ticks.map((t, i) => `<span style="left:${(frac(t) * 100).toFixed(2)}%">${axisNF.format(t)}${i === ticks.length - 1 ? " kg" : ""}</span>`).join("")}</div>`;
+    el.querySelector(".fold-note").hidden = !values.some((v) => v > sc.top);
+    el.querySelector(".strip")._sc = sc;
+  }
+
   function foodHTML(f) {
     const expanded = openFood === f.id;
     const id = esc(f.id);
-    const p = f.total == null ? 0 : pos(f.total) * 100;
-    const val = f.total == null
-      ? '<span class="na-val">Ingen dansk værdi</span>'
-      : `<span class="bar" data-w="${f.total}" style="width:${p.toFixed(2)}%"></span><span class="bar-val num${p > 88 ? " inside" : ""}" style="--p:${p.toFixed(2)}%">${fmt(f.total)}</span>`;
+    const val = f.total == null ? '<span class="na-val">Ingen dansk værdi</span>' : foldHTML(f.total, scaleOf.get(f.cat));
     return `<li class="food row-grid" data-id="${id}">
       <button type="button" class="food-btn" data-open="${id}" aria-expanded="${expanded}" aria-controls="det-${id}" style="--c:${color(f.total)}">
         <span class="food-name">${esc(f.name)}${tagOf(f) ? ` <span class="tag">${tagOf(f)}</span>` : ""}</span>
@@ -766,6 +836,8 @@
     const t = tokens();
     const filtering = t.length > 0;
     const hitIds = filtering ? new Set(findAll(foods, t).map((f) => f.id)) : null;
+    // While searching, every shelf shares one scale, so bars on different shelves compare.
+    const shared = filtering ? scaleFor(valued.filter((f) => hitIds.has(f.id)).map((f) => f.total)) : null;
     $("#shelves").classList.toggle("filtering", filtering);
     let total = 0, shelvesHit = 0;
     document.querySelectorAll(".shelf").forEach((el) => {
@@ -776,6 +848,10 @@
       el.hidden = filtering && !hits.length;
       el.querySelector(".count").textContent = filtering ? `${hits.length} af ${s.items.length} passer` : `${s.items.length} fødevarer`;
       el.querySelector(".typ").hidden = filtering;
+      const shown = hits.filter((f) => f.total != null).map((f) => f.total);
+      const sc = shared || scaleFor(shown);
+      scaleOf.set(s.cat, sc);
+      placeShelf(el, sc, shown);
       const isOpen = filtering ? hits.length > 0 : open.has(s.cat);
       el.querySelector(".shelf-btn").setAttribute("aria-expanded", isOpen);
       const list = el.querySelector(".foods");
@@ -888,7 +964,8 @@
       const f = byId.get(id);
       const strip = document.querySelector(`.shelf:has(.dot[data-id="${CSS.escape(id)}"]) .strip`);
       if (!strip) return;
-      strip.insertAdjacentHTML("beforeend", `<span class="pick-label${outCls(f.total)}" data-v="${f.total}" style="left:clamp(3rem, ${pct(f.total)}, calc(100% - 3rem));top:calc(${dotTop(f)}% - 0.6rem)">${esc(shortName(f.name))}</span>`);
+      const p = Math.min(1, f.total / strip._sc.top) * 100;
+      strip.insertAdjacentHTML("beforeend", `<span class="pick-label" style="left:clamp(3rem, ${p.toFixed(2)}%, calc(100% - 3rem));top:calc(${dotTop(f)}% - 0.6rem)">${esc(shortName(f.name))}</span>`);
     });
     tickOf.forEach((line, id) => line.classList.toggle("picked", picked.has(id)));
   }
@@ -996,22 +1073,15 @@
   }
 
   function axisLabels(width) {
-    // Decades always; 2 and 5 (then every step) once zoomed in far enough to have room.
-    const mults = span() > 2.2 ? [1] : span() > 0.9 ? [1, 2, 5] : [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    const all = [];
-    for (let k = Math.floor(view[0]); k <= Math.ceil(view[1]); k++) {
-      mults.forEach((m) => {
-        const v = m * 10 ** k, p = posRaw(v);
-        if (p > -1e-4 && p < 1 + 1e-4) all.push({ v, p, rank: m === 1 ? 0 : m === 5 ? 1 : m === 2 ? 2 : 3 });
-      });
-    }
-    const kept = [];
-    all.sort((a, b) => a.rank - b.rank)
-      .forEach((t) => { if (kept.every((k) => Math.abs(k.p - t.p) * width > 44)) kept.push(t); });
-    return kept;
+    // Round steps (1, 2, 2,5 or 5 times a power of ten) at least 56 px apart.
+    const raw = span() * 56 / width, k = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * k).find((x) => x >= raw);
+    const labels = [];
+    for (let i = Math.ceil(view[0] / step - 1e-9); i * step <= view[1] + 1e-9; i++) labels.push({ v: i * step || 0, p: posRaw(i * step) });
+    return labels;
   }
   const axisNF = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 3 });
-  const rangeNF = new Intl.NumberFormat("da-DK", { maximumSignificantDigits: 2 });
+  const rangeNF = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 1 });
 
   // Moves everything that sits on the scale: the line, band, axis, landmarks, dots and bars.
   function layout() {
@@ -1028,31 +1098,20 @@
       b.classList.toggle("tight", w * width < 56);
     });
     const labels = axisLabels(width);
-    // The shelves' guide lines follow the axis, so a zoomed shelf keeps its reference points.
-    const grids = labels.map(({ p }) => `<span class="grid" style="left:${(p * 100).toFixed(2)}%"></span>`).join("");
-    document.querySelectorAll(".strip .grids").forEach((g) => { g.innerHTML = grids; });
     $("#axis").innerHTML = labels.map(({ v, p }) => {
       const shift = p < 0.04 ? "0" : p > 0.96 ? "-100%" : "-50%";
       return `<span class="num" style="left:${(p * 100).toFixed(2)}%;translate:${shift} 0">${axisNF.format(v)}</span>`;
     }).join("");
-    document.querySelectorAll("[data-v]").forEach((el) => {
+    document.querySelectorAll(".mark[data-v]").forEach((el) => {
       const p = posRaw(+el.dataset.v);
       el.classList.toggle("out", p < -0.002 || p > 1.002);
-      el.style.left = el.classList.contains("pick-label")
-        ? `clamp(3rem, ${(p * 100).toFixed(3)}%, calc(100% - 3rem))` : (p * 100).toFixed(3) + "%";
-      if (el.classList.contains("mark")) { el.classList.toggle("edge-l", p < 0.07); el.classList.toggle("edge-r", p > 0.93); }
-    });
-    document.querySelectorAll(".bar[data-w]").forEach((b) => {
-      const p = pos(+b.dataset.w) * 100;
-      b.style.width = p.toFixed(2) + "%";
-      const val = b.nextElementSibling;
-      val.classList.toggle("inside", p > 88);
-      val.style.setProperty("--p", p.toFixed(2) + "%");
+      el.style.left = (p * 100).toFixed(3) + "%";
+      el.classList.toggle("edge-l", p < 0.07); el.classList.toggle("edge-r", p > 0.93);
     });
     scope.classList.toggle("zoomed", isZoomed());
     zoombar.hidden = !isZoomed();
     zoombar.innerHTML = isZoomed()
-      ? `<span>Viser ${rangeNF.format(10 ** view[0])}–${rangeNF.format(10 ** view[1])} kg CO<sub>2</sub>e pr. kg</span><button type="button" id="zoom-reset">Vis hele skalaen</button>`
+      ? `<span>Viser ${rangeNF.format(view[0])}–${rangeNF.format(view[1])} kg CO<sub>2</sub>e pr. kg</span><button type="button" id="zoom-reset">Vis hele skalaen</button>`
       : "";
     $("#zoom-in").disabled = span() <= MIN_SPAN + 1e-6;
     $("#zoom-out").disabled = !isZoomed();
@@ -1082,7 +1141,7 @@
   };
   const announceZoom = () => setTimeout(() => {
     status.textContent = isZoomed()
-      ? `Skalaen viser nu ${rangeNF.format(10 ** view[0])} til ${rangeNF.format(10 ** view[1])} kg CO2e pr. kg.`
+      ? `Skalaen viser nu ${rangeNF.format(view[0])} til ${rangeNF.format(view[1])} kg CO2e pr. kg.`
       : "Skalaen viser alle fødevarer.";
   }, 50);
   $("#zoom-in").addEventListener("click", () => { zoomAt(0.5, 0.5); announceZoom(); });

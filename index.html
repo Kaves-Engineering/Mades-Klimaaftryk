@@ -136,13 +136,15 @@
   .scale-key { align-self: end; color: var(--muted); font-size: 0.875rem; line-height: 1.35; padding-bottom: 0.35rem; }
   .scale-key .med-key { display: inline-block; width: 3px; height: 0.9rem; background: var(--ink); border-radius: 2px; vertical-align: -0.1rem; margin-right: 0.35rem; }
   .marks { position: relative; height: 3.2rem; }
-  .mark { position: absolute; bottom: 0; translate: -50% 0; display: flex; flex-direction: column; align-items: center; }
+  /* Only the label takes taps: a raised marker's empty box and stem must not cover its neighbour. */
+  .mark { position: absolute; bottom: 0; translate: -50% 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+  .mark button { pointer-events: auto; }
   .mark::after { content: ""; width: 1.5px; height: 0.4rem; background: var(--ink); }
   .mark.edge-l { translate: 0 0; align-items: flex-start; }
   .mark.edge-r { translate: -100% 0; align-items: flex-end; }
   .mark.up::after { height: 1.9rem; }
   .mark button {
-    border: 0; background: var(--bg); padding: 0 0.3rem; min-height: 1.4rem; border-radius: 3px; cursor: pointer;
+    border: 0; background: var(--bg); padding: 0 0.3rem; min-height: 1.5rem; border-radius: 3px; cursor: pointer;
     font-size: 0.875rem; font-weight: 700; white-space: nowrap; line-height: 1.3;
     text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 0.2em;
   }
@@ -154,7 +156,7 @@
   .ticks { display: block; width: 100%; height: 100%; overflow: visible; }
   .ticks line {
     stroke: var(--c); stroke-width: 1.5; opacity: 0.6; vector-effect: non-scaling-stroke;
-    transform-box: fill-box; transform-origin: 50% 100%; transition: opacity 0.2s;
+    transform-box: fill-box; transform-origin: 50% 100%; transition: opacity 0.15s;
   }
   .ticks line.out { display: none; }
   .ticks.filtering line { opacity: 0.12; }
@@ -212,7 +214,7 @@
   .dot {
     position: absolute; width: 11px; height: 11px; border-radius: 50%;
     background: var(--c); box-shadow: 0 0 0 1.5px var(--dot-ring);
-    translate: -50% -50%; transition: opacity 0.2s;
+    translate: -50% -50%; transition: opacity 0.15s;
   }
   .filtering .dot { opacity: 0.14; }
   /* A dot past the end of its shelf's scale sits at the edge, squared off on the left. */
@@ -253,7 +255,7 @@
     width: 100%; min-height: 2.75rem; padding: 0.3rem 0; border: 0; border-radius: 0.4rem;
     background: none; text-align: left; cursor: pointer; align-items: center;
   }
-  .food-btn[aria-expanded="true"] { background: var(--surface); }
+  .food-btn[aria-expanded="true"] { background: var(--surface); border-radius: 0.6rem 0.6rem 0 0; }
   @media (hover: hover) { .food-btn:hover { background: var(--surface); } }
   .food-name { padding-left: 1.9rem; line-height: 1.3; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
   .food-btn[aria-expanded="true"] .food-name { font-weight: 700; }
@@ -276,11 +278,14 @@
     display: grid; place-items: center; color: var(--muted);
   }
   @media (hover: hover) { .pick:hover { background: var(--surface); color: var(--ink); } }
-  .pick svg { width: 1.6rem; height: 1.6rem; }
-  .pick .on { display: none; }
+  /* Both icons share one cell and crossfade, so a press shows the plus turning into a check. */
+  .pick svg {
+    grid-area: 1 / 1; width: 1.6rem; height: 1.6rem;
+    transition-property: opacity, scale, filter; transition-duration: 0.2s; transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+  .pick .on, .pick[aria-pressed="true"] .off { opacity: 0; scale: 0.25; filter: blur(4px); }
   .pick[aria-pressed="true"] { color: var(--accent); }
-  .pick[aria-pressed="true"] .on { display: block; }
-  .pick[aria-pressed="true"] .off { display: none; }
+  .pick[aria-pressed="true"] .on { opacity: 1; scale: 1; filter: none; }
 
   .detail {
     grid-column: 1 / -1;
@@ -384,8 +389,11 @@
   .legend-mobile span { display: inline-flex; align-items: center; gap: 0.35rem; }
   .legend-mobile i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--c); }
 
-  /* A press shows at once on touch screens, where there is no hover to hint that a row is tappable. */
+  /* A press shows at once on touch screens, where there is no hover to hint that a row is tappable.
+     Full-width rows change colour; compact buttons also give a little under the finger. */
   .shelf-btn:active, .food-btn:active, .swaps button:active { background: var(--surface); }
+  .btn, .btn-text, .zoom button, .pick, .icon-btn, .x-btn { transition-property: scale; transition-duration: 0.15s; }
+  .btn:active:not(:disabled), .btn-text:active, .zoom button:active:not(:disabled), .pick:active, .icon-btn:active, .x-btn:active { scale: 0.96; }
 
   @media (max-width: 44rem) {
     :root { --gap: 0.5rem; }
@@ -425,7 +433,7 @@
     .strip { height: 2.75rem; margin: 0 var(--val-w) 0.25rem 0; }
     .food-btn { grid-column: 1; grid-template-columns: minmax(0, 1fr); row-gap: 0.2rem; padding-inline: 0; }
     /* The open row's panel reaches a little past the text, so the name doesn't touch its edge. */
-    .food-btn[aria-expanded="true"] { box-shadow: -0.5rem 0 0 var(--surface); border-radius: 0 0.4rem 0 0; }
+    .food-btn[aria-expanded="true"] { margin-left: -0.5rem; padding-left: 0.5rem; width: calc(100% + 0.5rem); }
     .food-name { padding-left: 0; }
     .fold { margin-bottom: 0.2rem; }
     .fold .ln > b { font-size: 0.9375rem; }
@@ -439,7 +447,7 @@
     .tray { padding-block: 0.6rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
     .tray-inner { flex-wrap: nowrap; gap: 0.5rem; }
     .tray-text { flex: 1 1 auto; line-height: 1.3; }
-    .tray-text strong { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tray-text strong { font-size: 1rem; }
     .tray-names { font-size: 0.8125rem; }
     .tray-actions { flex: none; gap: 0.25rem; }
     #tray-clear { border-color: transparent; padding-inline: 0.6rem; }
@@ -463,6 +471,13 @@
     dialog[open] { animation: sheet 0.25s cubic-bezier(.2, .7, .2, 1); }
   }
   @keyframes sheet { from { translate: 0 100%; } }
+  /* On the narrowest phones the tray's text gets its own line, so "vælg én mere" is never squeezed. */
+  @media (max-width: 24rem) {
+    .tray-inner { flex-wrap: wrap; }
+    .tray-text { flex-basis: 100%; }
+    .tray-actions { margin-left: auto; }
+    body.has-tray { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px)); }
+  }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   @media (forced-colors: active) { .ticks line { stroke: CanvasText; } }
   @media (forced-colors: active) { .dot, .fold i, .shelf-scale span, .median, .cmp-fill, .med-key { forced-color-adjust: none; } }
@@ -482,7 +497,7 @@
       </div>
       <button type="button" class="btn-text" id="toggle-all">Åbn alle hylder</button>
     </div>
-    <div class="row-grid scale-head">
+    <section class="row-grid scale-head" aria-label="Skala over alle fødevarer">
       <p class="scale-key" aria-hidden="true"><strong id="all-count">Alle fødevarer</strong><br>kg CO<sub>2</sub>e pr. kg fødevare<br><span class="med-key"></span>typisk for hylden</p>
       <div class="scale-col" id="scale-col">
         <div class="marks" id="marks"></div>
@@ -497,7 +512,7 @@
         <button type="button" id="zoom-in" aria-label="Zoom ind på skalaen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
         <button type="button" id="zoom-out" aria-label="Zoom ud på skalaen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg></button>
       </div>
-    </div>
+    </section>
   </div>
   <div class="legend-mobile" id="legend-mobile" aria-hidden="true"></div>
 
@@ -587,7 +602,7 @@
   // `opt` ones are left out on narrow screens.
   const LANDMARKS = [
     { id: "Ra00423", label: "Kylling" },
-    { id: "Ra00273", label: "Lam", up: true },
+    { id: "Ra00273", label: "Lam", up: true, opt: true },
     { id: "Ra00012", label: "Hakket oksekød", opt: true },
     { id: "Ra00503", label: "Oksekød", up: true },
     { id: "Ra00011", label: "Oksemørbrad" },
@@ -654,7 +669,7 @@
   }).sort((a, b) => a.med - b.med);
 
   // ---------- Scale header ----------
-  $("#bands").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})">${l.label}</span>`).join("");
+  $("#bands").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})">${l.label === LEVELS[i - 1]?.label ? "" : l.label}</span>`).join("");
   $("#all-count").textContent = `Alle ${dbValued.length} fødevarer`;
   $("#legend-mobile").innerHTML = LEVELS.map((l, i) => `<span style="--c:var(--l${i})"><i></i>${l.range}</span>`).join("");
   $("#marks").innerHTML = LANDMARKS.filter((m) => byId.get(m.id)?.total != null).map((m) => {
@@ -727,9 +742,28 @@
     const edges = [0, ...LEVELS.map((l) => Math.min(l.max, sc.top))];
     el.querySelector(".shelf-scale").innerHTML =
       `<div class="s-bands">${LEVELS.map((l, i) => edges[i + 1] > edges[i] ? `<span style="--c:var(--l${i});width:${((edges[i + 1] - edges[i]) / sc.top * 100).toFixed(2)}%"></span>` : "").join("")}</div>
-      <div class="s-axis num">${ticks.map((t, i) => `<span style="left:${(frac(t) * 100).toFixed(2)}%">${axisNF.format(t)}${i === ticks.length - 1 ? " kg" : ""}</span>`).join("")}</div>`;
+      <div class="s-axis num"></div>`;
     el.querySelector(".fold-note").hidden = !values.some((v) => v > sc.top);
     el.querySelector(".strip")._sc = sc;
+    drawShelfAxis(el);
+  }
+  // Numbers under a shelf: 0 and the top always, the steps between only where they have room,
+  // so a narrow phone shows "0  10  20 kg" rather than numbers running together.
+  function drawShelfAxis(el) {
+    const sc = el.querySelector(".strip")._sc, axis = el.querySelector(".s-axis");
+    if (!sc || !axis) return;
+    const width = axis.clientWidth, n = Math.round(sc.top / sc.step);
+    const text = (i) => axisNF.format(i * sc.step) + (i === n ? " kg" : "");
+    const w = (i) => text(i).length * 7.5; // rough label width in px at 13 px type
+    const kept = [0];
+    let right = w(0);
+    const lastLeft = width - w(n);
+    for (let i = 1; i < n; i++) {
+      const x = i / n * width;
+      if (!width || (x - w(i) / 2 >= right + 12 && x + w(i) / 2 <= lastLeft - 12)) { kept.push(i); right = x + w(i) / 2; }
+    }
+    kept.push(n);
+    axis.innerHTML = kept.map((i) => `<span style="left:${(i / n * 100).toFixed(2)}%">${text(i)}</span>`).join("");
   }
 
   function foodHTML(f) {
@@ -1098,6 +1132,7 @@
       b.classList.toggle("tight", w * width < 56);
     });
     const labels = axisLabels(width);
+    document.querySelectorAll(".shelf:not([hidden])").forEach(drawShelfAxis);
     $("#axis").innerHTML = labels.map(({ v, p }) => {
       const shift = p < 0.04 ? "0" : p > 0.96 ? "-100%" : "-50%";
       return `<span class="num" style="left:${(p * 100).toFixed(2)}%;translate:${shift} 0">${axisNF.format(v)}</span>`;

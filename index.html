@@ -644,6 +644,7 @@
   }));
   foods.forEach((f) => {
     f.hay = norm(f.name + " " + f.prod + " " + f.cat);
+    f.words = f.hay.split(/[^\p{L}\p{N}+]+/u).filter(Boolean);
     f.pp = f.total != null && f.prot >= MIN_PROTEIN ? f.total * 10 / f.prot : null;
   });
   const byId = new Map(foods.map((f) => [f.id, f]));
@@ -859,12 +860,51 @@
   // ---------- Search + rendering ----------
   const q = $("#q"), status = $("#status");
   const tokens = () => norm(q.value.trim()).split(/[\s,]+/).filter(Boolean);
-  // Whole-word matches win: "ost" finds cheese, not "dybfrost" – unless nothing starts with it.
-  const startsWord = (hay, t) => hay.startsWith(t) || hay.includes(" " + t) || hay.includes("(" + t) || hay.includes("-" + t);
-  const findAll = (pool, t) => {
-    const strict = pool.filter((f) => t.every((x) => startsWord(f.hay, x)));
-    return strict.length ? strict : pool.filter((f) => t.every((x) => f.hay.includes(x)));
+  // Danish glues words together and the last part names the food: "grillpølser" is a pølse,
+  // "flødeost" an ost. So a search word matches the start of a word, or the end of one with at
+  // least three letters in front, followed by an ending such as -e, -r, -er or -erne.
+  const ENDINGS = new Set(["", "e", "r", "n", "t", "s", "er", "en", "et", "es", "ne", "erne", "ene", "ers", "ens", "ets"]);
+  // Plurals that change their stem, and words that end in a food word without being that food.
+  const IRREGULAR = { kartofler: "kartoffel", gulerødder: "gulerod", nødder: "nød", ænder: "and", gæs: "gås" };
+  const NOT_HEADS = new Set(["æblemost", "gammel", "thousand", "island", "kødrand", "bordbrug", "porretærte"]);
+  const STOP = new Set(["og", "eller", "med", "uden", "i", "til", "af", "på", "som"]);
+  const VOCAB = new Set(foods.flatMap((f) => f.words));
+  const vocabList = [...VOCAB];
+  // A search word and its stem without the plural or definite ending: "pølser" → "pølse".
+  const forms = (t) => {
+    if (IRREGULAR[t]) return [t, IRREGULAR[t]];
+    const m = t.match(/^(\D{3,}?)(erne|ene|er|en|et|e|r)$/);
+    return m ? [t, m[1]] : [t, t];
   };
+  const wordHit = (w, [t, s]) => {
+    if (w.startsWith(t) || w.startsWith(s)) return true;
+    if (NOT_HEADS.has(w)) return false;
+    return [t, s].some((x, i) => {
+      if (x.length < 3) return false;
+      const at = w.lastIndexOf(x), end = at + x.length, rest = w.slice(end);
+      // A stem needs its ending back: "olie" → "oli" must not match "broccoli".
+      if (at < 3 || !ENDINGS.has(rest) || (i > 0 && !rest)) return false;
+      // "rød" is not the head of "knækbrød": it ends a longer word with too short a front.
+      for (let j = at - 2; j < at; j++) if (VOCAB.has(w.slice(j)) || VOCAB.has(w.slice(j, end))) return false;
+      return true;
+    });
+  };
+  // "kyllingelår" → "kylling" + "lår", used when the whole word finds nothing.
+  const splitWord = (t) => {
+    for (let i = 3; i <= t.length - 2; i++) {
+      // Drop the joint -e- or -s-: "kyllinge|lår" → "kylling".
+      const left = i > 3 ? t.slice(0, i).replace(/[es]$/, "") : t.slice(0, i), head = t.slice(i);
+      if (VOCAB.has(head) && vocabList.some((w) => w.startsWith(left))) return [left, head];
+    }
+    return [t];
+  };
+  const matchAll = (pool, words) => pool.filter((f) => words.every((x) => f.words.some((w) => wordHit(w, x))));
+  function findAll(pool, raw) {
+    const t = raw.some((x) => !STOP.has(x)) ? raw.filter((x) => !STOP.has(x)) : raw;
+    let hits = matchAll(pool, t.map(forms));
+    if (!hits.length) hits = matchAll(pool, t.flatMap(splitWord).map(forms));
+    return hits.length ? hits : pool.filter((f) => t.every((x) => f.hay.includes(x)));
+  }
 
   function render() {
     const t = tokens();
@@ -894,7 +934,7 @@
     });
     status.textContent = !filtering ? `${foods.length} fødevarer på ${shelves.length} hylder. ${foods.length - valued.length} af dem har ingen dansk værdi og står derfor kun i listerne.`
       : total ? `${total} ${total === 1 ? "fødevare" : "fødevarer"} på ${shelvesHit} ${shelvesHit === 1 ? "hylde" : "hylder"}`
-      : "Ingen fødevarer passer. Prøv et kortere ord, fx «kylling» i stedet for «kyllingelår».";
+      : "Ingen fødevarer passer. Prøv et kortere eller mere almindeligt ord, fx «kylling» eller «ost».";
     $("#toggle-all").hidden = filtering;
     $("#legend-mobile").hidden = filtering;
     $("#toggle-all").textContent = open.size === shelves.length ? "Luk alle hylder" : "Åbn alle hylder";
